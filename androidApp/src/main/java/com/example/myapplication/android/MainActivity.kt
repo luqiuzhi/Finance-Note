@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,16 +51,11 @@ class MainActivity : ComponentActivity() {
 
                 val billItemDao = db.billItemDao()
 
-                // Use the BillList composable
-
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // GreetingView(Greeting().greet())
-//                    BillList(billItems)
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // 第一个区域：汇总展示账单列表中的金额
                         val sumAmount = billItemDao.getSumAmount()
                         val totalAmount = sumAmount
                         Text(
@@ -66,11 +64,12 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(16.dp)
                         )
 
-                        // 第二个区域：展示账单列表
-                        var all = billItemDao.getAll()
-                        BillList(all)
+                        var all by remember { mutableStateOf(billItemDao.getAll()) }
+                        BillList(all) { item ->
+                            billItemDao.delete(item)
+                            all = billItemDao.getAll()
+                        }
 
-                        // 第三个区域：添加新账单的按钮
                         var showDialog by remember { mutableStateOf(false) }
                         var newItemDescription by remember { mutableStateOf("") }
                         var newItemAmount by remember { mutableStateOf("") }
@@ -107,18 +106,15 @@ class MainActivity : ComponentActivity() {
                                     Button(onClick = {
                                         val amount = newItemAmount.toDoubleOrNull()
                                         if (amount != null && newItemDescription.isNotBlank()) {
-                                            val maxId = billItemDao.getMaxId()
                                             val billItem = BillItem(
                                                 amount,
                                                 newItemDescription
                                             )
-                                            val billItems = billItemDao.getAll()
-                                            all =
-                                                all + billItem
+                                            billItemDao.insertAll(billItem)
+                                            all = billItemDao.getAll()
                                             showDialog = false
                                             newItemDescription = ""
                                             newItemAmount = ""
-                                            billItemDao.insertAll(billItem)
                                         }
                                     }) {
                                         Text("确定")
@@ -176,16 +172,22 @@ interface BillItemDao {
 }
 
 @Composable
-fun BillList(items: List<BillItem>) {
-    // Create a composable function for the bill list
+fun BillList(items: List<BillItem>, onDelete: (BillItem) -> Unit) {
     androidx.compose.foundation.lazy.LazyColumn {
         items(items) { item ->
             androidx.compose.foundation.layout.Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = item.description)
                 Text(text = "¥%.2f".format(item.amount))
+                IconButton(onClick = { onDelete(item) }) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete"
+                    )
+                }
             }
         }
     }
@@ -203,5 +205,3 @@ fun DefaultPreview() {
         GreetingView("Hello, Android!")
     }
 }
-
-
