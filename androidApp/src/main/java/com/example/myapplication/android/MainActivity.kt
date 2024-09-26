@@ -1,8 +1,16 @@
 package com.example.myapplication.android
 
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,6 +48,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -131,6 +140,32 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        createNotificationChannel()
+        setAlarm(this, System.currentTimeMillis() + 15000)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun setAlarm(context: Context, triggerAtMillis: Long) {
+        val alarmIntent = Intent(context, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(context, 0, alarmIntent,
+            PendingIntent.FLAG_IMMUTABLE)
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val canScheduleExactAlarms = alarmManager.canScheduleExactAlarms()
+        if (canScheduleExactAlarms) alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Channel Name"
+            val descriptionText = "Channel Description"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel("your_channel_id", name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 }
 
@@ -193,7 +228,7 @@ fun BillList(items: List<BillItem>, onDelete: (BillItem) -> Unit) {
     }
 }
 
-@Database(entities = [BillItem::class], version = 1)
+@Database(entities = [BillItem::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun billItemDao(): BillItemDao
 }
